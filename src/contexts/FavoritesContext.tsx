@@ -3,10 +3,10 @@ import type { ReactNode } from 'react';
 
 // 🎓 学習ポイント1: お気に入りコンテキストの型定義
 interface FavoritesContextType {
-  favoriteIds: number[];                           // お気に入り投稿のID配列
+  favoriteIds: string[];                           // お気に入り投稿のID配列
   favoriteCount: number;                           // お気に入り数
-  isFavorite: (postId: number) => boolean;        // 指定投稿がお気に入りか判定
-  toggleFavorite: (postId: number) => void;       // お気に入り追加/削除
+  isFavorite: (postId: string) => boolean;        // 指定投稿がお気に入りか判定
+  toggleFavorite: (postId: string) => void;       // お気に入り追加/削除
   clearAllFavorites: () => void;                  // 全削除（開発用）
 }
 
@@ -21,7 +21,7 @@ interface FavoritesProviderProps {
 // 🎓 学習ポイント4: お気に入り Provider コンポーネント
 export const FavoritesProvider: React.FC<FavoritesProviderProps> = ({ children }) => {
   // 🎓 学習ポイント5: 状態管理
-  const [favoriteIds, setFavoriteIds] = useState<number[]>([]);
+  const [favoriteIds, setFavoriteIds] = useState<string[]>([]);
 
   // 🎓 学習ポイント6: ローカルストレージからの初期読み込み
   useEffect(() => {
@@ -51,12 +51,12 @@ export const FavoritesProvider: React.FC<FavoritesProviderProps> = ({ children }
   }, [favoriteIds]);
 
   // 🎓 学習ポイント8: お気に入り判定関数
-  const isFavorite = (postId: number): boolean => {
+  const isFavorite = (postId: string): boolean => {
     return favoriteIds.includes(postId);
   };
 
   // 🎓 学習ポイント9: お気に入り切り替え関数
-  const toggleFavorite = (postId: number): void => {
+  const toggleFavorite = (postId: string): void => {
     setFavoriteIds(prev => {
       if (prev.includes(postId)) {
         // 既にお気に入りの場合は削除
@@ -115,3 +115,23 @@ export const useFavorites = (): FavoritesContextType => {
   return context;
 };
 
+// 🎓 学習ポイント17: 開発用のデバッグ関数
+export const useFavoritesDebug = () => {
+  const { favoriteIds, favoriteCount, clearAllFavorites } = useFavorites();
+  
+  const debugInfo = {
+    favoriteIds,
+    favoriteCount,
+    clearAll: clearAllFavorites,
+    // ローカルストレージの内容も確認
+    localStorage: (() => {
+      try {
+        return JSON.parse(localStorage.getItem('cms-favorites') || '[]');
+      } catch {
+        return [];
+      }
+    })(),
+  };
+  
+  return debugInfo;
+};

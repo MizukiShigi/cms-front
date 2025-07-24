@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import type { Post, PostsResponse } from '../types/Post';
+import type { PostSummary, ListPostsParams } from '../types/Post';
+import { usePostsPaginated } from '../hooks/usePosts';
 import Button from '../components/common/Button';
 import Input from '../components/common/Input';
 import { useFavorites } from '../contexts/FavoritesContext';
@@ -20,110 +21,48 @@ import {
   IconSizes
 } from '../components/common/Icons';
 
-// 🎓 学習ポイント1: 投稿管理ページコンポーネント（API連携版）
+// 🎓 学習ポイント1: TanStack Queryを使った投稿管理ページ
 const Posts: React.FC = () => {
   // 🎓 学習ポイント2: React Router navigation
   const navigate = useNavigate();
   
-  // 🎓 学習ポイント3: useState による状態管理
-  const [posts, setPosts] = useState<Post[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
+  // 🎓 学習ポイント3: ローカル状態管理（UI状態のみ）
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [currentPage, setCurrentPage] = useState<number>(1);
-  const [totalPages, setTotalPages] = useState<number>(1);
+  const [statusFilter, setStatusFilter] = useState<ListPostsParams['status']>();
 
   // 🎓 学習ポイント4: お気に入りコンテキストの利用
   const { favoriteCount } = useFavorites();
 
-  // 🎓 学習ポイント3: API呼び出し関数（開発用ダミーデータ版）
-  const fetchPosts = async (page: number = 1, query: string = '') => {
-    setLoading(true);
-    setError(null);
-    
-    // 🎓 学習ポイント: 開発中は実際のAPIがないのでダミーデータを使用
-    await new Promise(resolve => setTimeout(resolve, 1000)); // 読み込み時間をシミュレート
-    
-    try {
-      const dummyPosts = getDummyPosts();
-      
-      // 🎓 学習ポイント4: 検索機能のシミュレート
-      const filteredPosts = query 
-        ? dummyPosts.filter(post => 
-            post.title.toLowerCase().includes(query.toLowerCase()) ||
-            post.content.toLowerCase().includes(query.toLowerCase()) ||
-            post.tags.some(tag => tag.toLowerCase().includes(query.toLowerCase()))
-          )
-        : dummyPosts;
-      
-      setPosts(filteredPosts);
-      setTotalPages(1); // ダミーデータなので1ページのみ
-      setCurrentPage(1);
-      
-    } catch (err) {
-      setError(err instanceof Error ? err.message : '予期しないエラーが発生しました');
-      setPosts([]);
-      setTotalPages(1);
-    } finally {
-      setLoading(false);
-    }
-  };
+  // 🔑 重要: TanStack Queryを使ったデータ取得
+  const { 
+    data,
+    isLoading,
+    isError,
+    error,
+    totalPages,
+    hasNextPage,
+    hasPreviousPage,
+  } = usePostsPaginated(currentPage, 20, {
+    // 🔧 デバッグ: まずは全ての投稿を取得してみる
+    // status: statusFilter,
+    sort: 'created_at_desc'
+  });
 
-  // 🎓 学習ポイント5: useEffect でコンポーネント初期化時にデータ取得
-  useEffect(() => {
-    fetchPosts(currentPage, searchQuery);
-  }, [currentPage, searchQuery]);
-
-  // 🎓 学習ポイント6: 検索機能
+  // 🎓 学習ポイント5: 検索機能（将来の実装用）
   const handleSearch = (query: string) => {
     setSearchQuery(query);
     setCurrentPage(1); // 検索時は1ページ目に戻る
+    // TODO: 実際の検索APIが実装されたらここで呼び出し
   };
 
-  // 🎓 学習ポイント7: ページング機能
+  // 🎓 学習ポイント6: ページング機能
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
   };
-
-  // 🎓 学習ポイント8: 開発用ダミーデータ
-  const getDummyPosts = (): Post[] => [
-    {
-      id: 1,
-      title: "React TypeScriptの学習方法",
-      content: "React TypeScriptを効率的に学習するためのポイントを解説します...",
-      author: "開発者",
-      createdAt: "2024-01-20T10:00:00Z",
-      updatedAt: "2024-01-20T10:00:00Z",
-      status: "published",
-      tags: ["React", "TypeScript", "学習"],
-      excerpt: "React TypeScriptを効率的に学習するためのポイント"
-    },
-    {
-      id: 2,
-      title: "useReducerとuseStateの使い分け",
-      content: "状態管理でuseReducerとuseStateをどう使い分けるかを解説...",
-      author: "開発者",
-      createdAt: "2024-01-19T15:30:00Z",
-      updatedAt: "2024-01-19T15:30:00Z",
-      status: "published",
-      tags: ["React", "状態管理", "hooks"],
-      excerpt: "状態管理の選択基準について"
-    },
-    {
-      id: 3,
-      title: "API連携のベストプラクティス",
-      content: "ReactアプリケーションでのAPI連携パターンを紹介...",
-      author: "開発者",
-      createdAt: "2024-01-18T09:15:00Z",
-      updatedAt: "2024-01-18T09:15:00Z",
-      status: "draft",
-      tags: ["API", "React", "ベストプラクティス"],
-      excerpt: "API連携のパターンとエラーハンドリング"
-    }
-  ];
-  // 🎓 学習ポイント9: 条件付きレンダリング
+  // 🎓 学習ポイント7: TanStack Query状態に基づくレンダリング
   const renderContent = () => {
-    if (loading) {
+    if (isLoading) {
       return (
         <div style={loadingStyles}>
           <div style={loadingIconStyles}>
@@ -134,20 +73,20 @@ const Posts: React.FC = () => {
       );
     }
 
-    if (error) {
+    if (isError) {
       return (
         <div style={errorStyles}>
           <div style={errorIconStyles}>
             <ArchiveIcon size={IconSizes.xl} color={IconColors.danger} />
           </div>
           <h3>エラーが発生しました</h3>
-          <p>{error}</p>
-          <p style={errorSubTextStyles}>開発用ダミーデータを表示しています</p>
+          <p>{error?.message || '予期しないエラーが発生しました'}</p>
+          <p style={errorSubTextStyles}>サーバーとの通信でエラーが発生しました</p>
         </div>
       );
     }
 
-    if (posts.length === 0) {
+    if (!data?.posts || data.posts.length === 0) {
       return (
         <div style={emptyStateStyles}>
           <div style={emptyIconStyles}>
@@ -163,7 +102,7 @@ const Posts: React.FC = () => {
 
     return (
       <div style={postsGridStyles}>
-        {posts.map(post => (
+        {data.posts.map(post => (
           <PostCard key={post.id} post={post} />
         ))}
       </div>
@@ -175,6 +114,24 @@ const Posts: React.FC = () => {
       <div style={headerStyles}>
         <h1 style={titleStyles}>投稿管理</h1>
         <p style={subtitleStyles}>作成した投稿を管理できます</p>
+        
+        {/* 🔧 デバッグ情報の表示 */}
+        {data?.meta && (
+          <div style={{ 
+            marginTop: '1rem', 
+            padding: '1rem', 
+            backgroundColor: 'rgba(59, 130, 246, 0.1)',
+            borderRadius: '8px',
+            fontSize: '0.9rem',
+            color: '#1e40af'
+          }}>
+            <strong>デバッグ情報:</strong><br />
+            総件数: {data.meta.total} | 
+            取得件数: {data.meta.limit} | 
+            開始位置: {data.meta.offset} | 
+            次ページ: {data.meta.has_next ? 'あり' : 'なし'}
+          </div>
+        )}
         
         {/* 🎓 学習ポイント: お気に入り数の表示 */}
         {favoriteCount > 0 && (
@@ -215,12 +172,12 @@ const Posts: React.FC = () => {
         {renderContent()}
       </div>
 
-      {/* 🎓 学習ポイント12: ページネーション */}
-      {posts.length > 0 && totalPages > 1 && (
+      {/* 🎓 学習ポイント8: TanStack Queryによるページネーション */}
+      {data?.posts && data.posts.length > 0 && totalPages > 1 && (
         <div style={paginationStyles}>
           <Button 
             variant="secondary" 
-            disabled={currentPage === 1}
+            disabled={!hasPreviousPage || isLoading}
             onClick={() => handlePageChange(currentPage - 1)}
           >
             前へ
@@ -230,7 +187,7 @@ const Posts: React.FC = () => {
           </span>
           <Button 
             variant="secondary" 
-            disabled={currentPage === totalPages}
+            disabled={!hasNextPage || isLoading}
             onClick={() => handlePageChange(currentPage + 1)}
           >
             次へ
@@ -241,15 +198,17 @@ const Posts: React.FC = () => {
   );
 };
 
-// 🎓 学習ポイント13: PostCard子コンポーネント
-const PostCard: React.FC<{ post: Post }> = ({ post }) => {
+// 🎓 学習ポイント9: PostCard子コンポーネント（PostSummary対応）
+const PostCard: React.FC<{ post: PostSummary }> = ({ post }) => {
   const navigate = useNavigate();
   const { isFavorite } = useFavorites();
-  const formatDate = (dateString: string) => {
+  
+  const formatDate = (dateString: string | null) => {
+    if (!dateString) return '未設定';
     return new Date(dateString).toLocaleDateString('ja-JP');
   };
 
-  const getStatusBadge = (status: Post['status']) => {
+  const getStatusBadge = (status: PostSummary['status']) => {
     const statusConfig = {
       published: { 
         text: '公開', 
@@ -261,10 +220,15 @@ const PostCard: React.FC<{ post: Post }> = ({ post }) => {
         color: IconColors.warning,
         icon: <DocumentIcon size={IconSizes.xs} />
       },
-      archived: { 
-        text: 'アーカイブ', 
-        color: IconColors.muted,
+      private: { 
+        text: '非公開', 
+        color: IconColors.secondary,
         icon: <ArchiveIcon size={IconSizes.xs} />
+      },
+      deleted: { 
+        text: '削除済み', 
+        color: IconColors.danger,
+        icon: <TrashIcon size={IconSizes.xs} />
       }
     };
     
@@ -306,7 +270,8 @@ const PostCard: React.FC<{ post: Post }> = ({ post }) => {
         {getStatusBadge(post.status)}
       </div>
       
-      <p style={postExcerptStyles}>{post.excerpt}</p>
+      {/* 🎓 学習ポイント: PostSummaryには excerpt がないため、タイトルの代わりに表示 */}
+      <p style={postExcerptStyles}>投稿の詳細を確認するにはクリックしてください</p>
       
       <div style={postTagsStyles}>
         {post.tags.map(tag => (
@@ -320,12 +285,12 @@ const PostCard: React.FC<{ post: Post }> = ({ post }) => {
       <div style={postFooterStyles}>
         <div style={postMetaStyles}>
           <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-            <UserIcon size={IconSizes.xs} color={IconColors.secondary} />
-            {post.author}
+            <CalendarIcon size={IconSizes.xs} color={IconColors.secondary} />
+            公開: {formatDate(post.first_published_at)}
           </span>
           <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
             <CalendarIcon size={IconSizes.xs} color={IconColors.secondary} />
-            {formatDate(post.createdAt)}
+            更新: {formatDate(post.content_updated_at)}
           </span>
         </div>
         
