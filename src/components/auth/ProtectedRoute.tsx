@@ -1,6 +1,6 @@
 import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuthContext } from '../../contexts/AuthContext';
 
 // 🎓 学習ポイント1: ProtectedRouteのProps型定義
 interface ProtectedRouteProps {
@@ -10,13 +10,13 @@ interface ProtectedRouteProps {
 // 🎓 学習ポイント2: Higher-Order Component パターン
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
   // 🎓 学習ポイント3: 認証状態の取得
-  const { state: authState } = useAuth();
+  const { isAuthenticated } = useAuthContext();
   
   // 🎓 学習ポイント4: 現在のURLを取得（リダイレクト後に戻るため）
   const location = useLocation();
 
   // 🎓 学習ポイント5: 認証チェックとリダイレクト
-  if (!authState.isAuthenticated) {
+  if (!isAuthenticated) {
     // 未ログインの場合、ログインページにリダイレクト
     // state で現在のページ情報を保存（ログイン後に戻るため）
     return (

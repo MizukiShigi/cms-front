@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuthContext } from '../contexts/AuthContext';
 import { theme } from '../styles/theme';
 import Button from '../components/common/Button';
 import Input from '../components/common/Input';
@@ -13,7 +13,7 @@ const Login: React.FC = () => {
   const navigate = useNavigate();
   
   // 🎓 学習ポイント2: 認証コンテキスト
-  const { login } = useAuth();
+  const { login } = useAuthContext();
   
   // 🎓 学習ポイント3: ローディング状態管理
   const [isLoading, setIsLoading] = useState(false);

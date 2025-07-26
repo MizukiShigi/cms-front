@@ -7,7 +7,6 @@ import Input from '../components/common/Input';
 import { useFavorites } from '../contexts/FavoritesContext';
 import { 
   HeartIcon, 
-  UserIcon, 
   CalendarIcon, 
   TagIcon, 
   PlusIcon, 

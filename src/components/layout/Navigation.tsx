@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuthContext } from '../../contexts/AuthContext';
 import { theme } from '../../styles/theme';
 import {
   DashboardIcon,
@@ -97,13 +97,13 @@ const Navigation: React.FC<NavigationProps> = ({
   const navigate = useNavigate();
   const location = useLocation();
   
-  // 🎓 学習ポイント5: useAuth hookを使った認証状態の取得
-  const { state: authState, logout } = useAuth();
+  // 🎓 学習ポイント5: useAuthContext hookを使った認証状態の取得
+  const { isAuthenticated, user, logout } = useAuthContext();
   const [hoveredItem, setHoveredItem] = useState<string | null>(null);
 
   // 🎓 学習ポイント6: 条件付きレンダリング用の関数
   const getVisibleItems = (): NavigationItem[] => {
-    if (authState.isAuthenticated) {
+    if (isAuthenticated) {
       // ログイン済みの場合は、認証が不要なアイテムと認証が必要なアイテムを表示
       return navigationItems;
     } else {
@@ -156,14 +156,14 @@ const Navigation: React.FC<NavigationProps> = ({
         </div>
 
         {/* 🎨 ユーザー情報セクション */}
-        {authState.isAuthenticated && (
+        {isAuthenticated && (
           <div style={getUserSectionStyles(isDarkMode)}>
             <div style={avatarStyles}>
-              {authState.user?.name?.charAt(0).toUpperCase() || 'U'}
+              {user?.name?.charAt(0).toUpperCase() || 'U'}
             </div>
             <div style={userInfoStyles}>
-              <p style={getUserNameStyles(isDarkMode)}>{authState.user?.name}</p>
-              <p style={getUserEmailStyles(isDarkMode)}>{authState.user?.email}</p>
+              <p style={getUserNameStyles(isDarkMode)}>{user?.name}</p>
+              <p style={getUserEmailStyles(isDarkMode)}>{user?.email}</p>
             </div>
           </div>
         )}
@@ -189,7 +189,7 @@ const Navigation: React.FC<NavigationProps> = ({
         </div>
 
         {/* 🎨 ログアウトボタン（認証済みユーザーのみ） */}
-        {authState.isAuthenticated && (
+        {isAuthenticated && (
           <div style={navFooterStyles}>
             <button
               style={getLogoutButtonStyles(isDarkMode, hoveredItem === 'logout')}

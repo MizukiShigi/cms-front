@@ -6,7 +6,6 @@ import type {
   ListPostsResponse, 
   ListPostsParams, 
   Post, 
-  PostSummary 
 } from '@/types/Post';
 
 // 🎓 学習ポイント1: Query Key の定義（実際のAPI対応）
