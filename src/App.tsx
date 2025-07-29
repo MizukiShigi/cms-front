@@ -2,8 +2,8 @@ import { useState } from 'react'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
+import { Auth0Provider } from '@auth0/auth0-react'
 import { queryClient } from './lib/queryClient'
-import { AuthProvider } from './contexts/AuthContext'
 import { FavoritesProvider } from './contexts/FavoritesContext'
 import Layout from './components/layout/Layout'
 import ProtectedRoute from './components/auth/ProtectedRoute'
@@ -33,10 +33,17 @@ function App() {
     setIsDarkMode(!isDarkMode)
   }
 
+
   return (
     <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
-        <AuthProvider>
+      <Auth0Provider
+        domain={import.meta.env.VITE_AUTH0_DOMAIN}
+        clientId={import.meta.env.VITE_AUTH0_CLIENT_ID}
+        authorizationParams={{
+          redirect_uri: window.location.origin
+        }}
+      >
+        <BrowserRouter>
           <FavoritesProvider>
           <Layout 
           title="CMS Dashboard" 
@@ -108,8 +115,8 @@ function App() {
           </Routes>
         </Layout>
           </FavoritesProvider>
-        </AuthProvider>
-      </BrowserRouter>
+        </BrowserRouter>
+      </Auth0Provider>
       {/* 🎓 学習ポイント: 開発時のみReact Query DevToolsを表示 */}
       <ReactQueryDevtools initialIsOpen={false} />
     </QueryClientProvider>

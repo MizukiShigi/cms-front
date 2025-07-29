@@ -1,164 +1,92 @@
-import React, { useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
-import { useAuthContext } from '../contexts/AuthContext';
-import { theme } from '../styles/theme';
+import React, { useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../hooks/useAuth0';
 import Button from '../components/common/Button';
-import Input from '../components/common/Input';
-import { LoginIcon, UserIcon, RocketIcon, SearchIcon, IconSizes } from '../components/common/Icons';
+import { LoginIcon, UserIcon, RocketIcon, IconSizes } from '../components/common/Icons';
 
-// 🎓 学習ポイント: リダイレクト機能付きログインページ
+// 🎓 学習ポイント: Auth0を使用したログインページ
 const Login: React.FC = () => {
-  // 🎓 学習ポイント1: React Router hooks
-  const location = useLocation();
   const navigate = useNavigate();
   
-  // 🎓 学習ポイント2: 認証コンテキスト
-  const { login } = useAuthContext();
-  
-  // 🎓 学習ポイント3: ローディング状態管理
-  const [isLoading, setIsLoading] = useState(false);
-  
-  // 🎓 学習ポイント4: フォーム状態管理
-  const [email, setEmail] = useState('test@example.com');
-  const [password, setPassword] = useState('password123');
-  const [emailError, setEmailError] = useState('');
-  const [passwordError, setPasswordError] = useState('');
+  // 🎓 学習ポイント: Auth0フック
+  const { isAuthenticated, isLoading, login, register } = useAuth();
 
-  // 🎓 学習ポイント4: リダイレクト先の判定
-  const from = location.state?.from?.pathname || '/';  // デフォルトはホーム
+  // 認証済みの場合は自動でリダイレクト
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate('/');
+    }
+  }, [isAuthenticated, navigate]);
 
-  // 🎓 学習ポイント5: フォームログイン処理
-  const handleFormLogin = async () => {
-    // バリデーション
-    setEmailError('');
-    setPasswordError('');
-    
-    if (!email.includes('@')) {
-      setEmailError('有効なメールアドレスを入力してください');
-      return;
-    }
-    
-    if (password.length < 6) {
-      setPasswordError('パスワードは6文字以上で入力してください');
-      return;
-    }
-
-    setIsLoading(true);
-    try {
-      await login(email, password);
-      navigate(from, { replace: true });
-    } catch (error) {
-      console.error('ログインエラー:', error);
-      setEmailError('ログインに失敗しました');
-    } finally {
-      setIsLoading(false);
-    }
+  // Auth0のログイン処理
+  const handleLogin = () => {
+    login();
   };
 
-  // 🎓 学習ポイント6: 簡易ログイン処理
-  const handleQuickLogin = async () => {
-    setIsLoading(true);
-    try {
-      // テスト用のダミーユーザーでログイン
-      await login('test@example.com', 'password123');
-      
-      // 🎯 ログイン成功後に元のページにリダイレクト
-      navigate(from, { replace: true });
-    } catch (error) {
-      console.error('ログインエラー:', error);
-    } finally {
-      setIsLoading(false);
-    }
+  // Auth0の登録処理
+  const handleRegister = () => {
+    register();
   };
+
+  // ローディング中の表示
+  if (isLoading) {
+    return (
+      <div style={loadingStyles}>
+        <div style={loadingSpinnerStyles}>🔄</div>
+        <p>認証中...</p>
+      </div>
+    );
+  }
 
   return (
     <div style={containerStyles}>
       <div style={headerStyles}>
         <h1 style={titleStyles}>ログイン</h1>
-        <p style={subtitleStyles}>アカウントにログインしてください</p>
+        <p style={subtitleStyles}>CMSダッシュボードへようこそ</p>
       </div>
-      
-      <div style={contentStyles}>
-        {/* 🎓 学習ポイント6: リダイレクト情報の表示 */}
-        {from !== '/' && (
-          <div style={redirectInfoStyles}>
-            <span style={redirectIconStyles}><SearchIcon size={IconSizes.md} /></span>
-            <p style={redirectTextStyles}>
-              ログイン後、<strong>{from}</strong> に戻ります
-            </p>
-          </div>
-        )}
 
-        <div style={loginCardStyles}>
-          <span style={loginIconStyles}><LoginIcon size={IconSizes.xl} /></span>
-          <h3 style={loginTitleStyles}>ログイン</h3>
-          
-          {/* 🎯 Inputコンポーネントのテスト */}
-          <div style={formStyles}>
-            <Input
-              label="メールアドレス"
-              type="email"
-              placeholder="example@email.com"
-              value={email}
-              onChange={setEmail}
-              error={emailError}
-              leftIcon={<UserIcon size={IconSizes.sm} />}
-              fullWidth
-              required
-            />
-            
-            <Input
-              label="パスワード"
-              type="password"
-              placeholder="パスワードを入力"
-              value={password}
-              onChange={setPassword}
-              error={passwordError}
-              leftIcon={<LoginIcon size={IconSizes.sm} />}
-              helperText="6文字以上で入力してください"
-              fullWidth
-              required
-            />
-            
-            <Button
-              variant="primary"
-              size="large"
-              loading={isLoading}
-              onClick={handleFormLogin}
-              fullWidth
-            >
-              ログイン
-            </Button>
+      <div style={cardStyles}>
+        <div style={welcomeStyles}>
+          <div style={iconContainerStyles}>
+            <RocketIcon size="4rem" />
           </div>
-          
-          <div style={dividerStyles}>
-            <span>または</span>
-          </div>
-          
-          {/* 🎯 簡易ログインボタン */}
+          <h2 style={welcomeTitleStyles}>始めましょう</h2>
+          <p style={welcomeTextStyles}>
+            Auth0の安全な認証でアカウントにアクセスしてください
+          </p>
+        </div>
+
+        <div style={actionsStyles}>
           <Button
-            variant="secondary"
-            size="medium"
-            loading={isLoading}
-            onClick={handleQuickLogin}
-            leftIcon={<RocketIcon size={IconSizes.sm} />}
+            variant="primary"
+            onClick={handleLogin}
+            disabled={isLoading}
             fullWidth
           >
-            簡易ログイン
+            <LoginIcon size={IconSizes.sm} style={{ marginRight: '0.5rem' }} />
+            ログイン
           </Button>
-          
-          {/* 🎓 学習ポイント7: リダイレクト先の表示 */}
-          <div style={debugInfoStyles}>
-            <h4 style={debugTitleStyles}><SearchIcon size={IconSizes.sm} /> デバッグ情報</h4>
-            <p style={debugItemStyles}>
-              <strong>現在のページ:</strong> {location.pathname}
-            </p>
-            <p style={debugItemStyles}>
-              <strong>リダイレクト先:</strong> {from}
-            </p>
-            <p style={debugItemStyles}>
-              <strong>元ページ情報:</strong> {location.state?.from ? 'あり' : 'なし'}
-            </p>
+
+          <Button
+            variant="secondary"
+            onClick={handleRegister}
+            disabled={isLoading}
+            fullWidth
+          >
+            <UserIcon size={IconSizes.sm} style={{ marginRight: '0.5rem' }} />
+            新規登録
+          </Button>
+        </div>
+
+        <div style={featuresStyles}>
+          <div style={featureStyles}>
+            <h3 style={featureTitleStyles}>✨ 特徴</h3>
+            <ul style={featureListStyles}>
+              <li>🔒 安全なAuth0認証</li>
+              <li>📝 投稿管理機能</li>
+              <li>📊 ダッシュボード</li>
+              <li>🎨 美しいUI/UX</li>
+            </ul>
           </div>
         </div>
       </div>
@@ -168,132 +96,116 @@ const Login: React.FC = () => {
 
 // 🎨 スタイル定義
 const containerStyles: React.CSSProperties = {
-  padding: '2rem 0',
+  minHeight: '100vh',
+  display: 'flex',
+  flexDirection: 'column',
+  justifyContent: 'center',
+  alignItems: 'center',
+  padding: '2rem',
+  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+};
+
+const loadingStyles: React.CSSProperties = {
+  minHeight: '100vh',
+  display: 'flex',
+  flexDirection: 'column',
+  justifyContent: 'center',
+  alignItems: 'center',
+  gap: '1rem',
+};
+
+const loadingSpinnerStyles: React.CSSProperties = {
+  fontSize: '3rem',
+  animation: 'spin 1s linear infinite',
 };
 
 const headerStyles: React.CSSProperties = {
-  marginBottom: '2rem',
   textAlign: 'center',
+  marginBottom: '2rem',
 };
 
 const titleStyles: React.CSSProperties = {
-  fontSize: '2.5rem',
+  fontSize: '3rem',
   fontWeight: 700,
+  color: 'white',
   marginBottom: '0.5rem',
-  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-  WebkitBackgroundClip: 'text',
-  WebkitTextFillColor: 'transparent',
-  backgroundClip: 'text',
+  textShadow: '0 2px 4px rgba(0,0,0,0.3)',
 };
 
 const subtitleStyles: React.CSSProperties = {
-  fontSize: '1.1rem',
-  color: '#64748b',
+  fontSize: '1.2rem',
+  color: 'rgba(255, 255, 255, 0.9)',
   margin: 0,
 };
 
-const contentStyles: React.CSSProperties = {
-  display: 'flex',
-  justifyContent: 'center',
-  alignItems: 'center',
-  minHeight: '400px',
-};
-
-// 🎨 リダイレクト情報スタイル
-const redirectInfoStyles: React.CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  gap: '0.5rem',
-  marginBottom: '2rem',
-  padding: '1rem',
-  backgroundColor: 'rgba(14, 165, 233, 0.1)',
-  borderRadius: '12px',
-  border: '1px solid rgba(14, 165, 233, 0.2)',
-};
-
-const redirectIconStyles: React.CSSProperties = {
-  fontSize: '1.5rem',
-};
-
-const redirectTextStyles: React.CSSProperties = {
-  fontSize: '0.95rem',
-  color: '#334155',
-  margin: 0,
-};
-
-// 🎨 ログインカードスタイル
-const loginCardStyles: React.CSSProperties = {
-  textAlign: 'center',
-  padding: '3rem',
-  backgroundColor: 'rgba(255, 255, 255, 0.1)',
+const cardStyles: React.CSSProperties = {
+  backgroundColor: 'rgba(255, 255, 255, 0.95)',
   borderRadius: '20px',
-  border: '1px solid rgba(255, 255, 255, 0.2)',
+  padding: '3rem',
+  boxShadow: '0 20px 40px rgba(0,0,0,0.1)',
   backdropFilter: 'blur(10px)',
+  border: '1px solid rgba(255, 255, 255, 0.2)',
   maxWidth: '500px',
+  width: '100%',
 };
 
-const loginIconStyles: React.CSSProperties = {
-  fontSize: '4rem',
-  display: 'block',
+const welcomeStyles: React.CSSProperties = {
+  textAlign: 'center',
+  marginBottom: '2rem',
+};
+
+const iconContainerStyles: React.CSSProperties = {
   marginBottom: '1rem',
-  filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.1))',
+  color: '#667eea',
 };
 
-const loginTitleStyles: React.CSSProperties = {
-  fontSize: '1.5rem',
+const welcomeTitleStyles: React.CSSProperties = {
+  fontSize: '2rem',
   fontWeight: 600,
-  marginBottom: '1rem',
   color: '#334155',
+  marginBottom: '1rem',
 };
 
-// const loginDescStyles: React.CSSProperties = {
-//   fontSize: '1rem',
-//   color: '#64748b',
-//   lineHeight: 1.5,
-//   marginBottom: '2rem',
-// };
+const welcomeTextStyles: React.CSSProperties = {
+  fontSize: '1rem',
+  color: '#64748b',
+  lineHeight: 1.6,
+  marginBottom: '2rem',
+};
 
-// 🎨 フォームスタイル
-const formStyles: React.CSSProperties = {
+const actionsStyles: React.CSSProperties = {
   display: 'flex',
   flexDirection: 'column',
-  gap: '1.5rem',
+  gap: '1rem',
   marginBottom: '2rem',
 };
 
-// 🎨 区切り線スタイル
-const dividerStyles: React.CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  margin: '1.5rem 0',
-  color: '#64748b',
-  fontSize: '0.9rem',
-  fontWeight: 500,
+
+const featuresStyles: React.CSSProperties = {
+  borderTop: '1px solid #e2e8f0',
+  paddingTop: '2rem',
 };
 
-
-// 🎨 デバッグ情報スタイル
-const debugInfoStyles: React.CSSProperties = {
-  textAlign: 'left',
-  padding: '1.5rem',
-  backgroundColor: 'rgba(0, 0, 0, 0.1)',
-  borderRadius: '8px',
-  border: '1px solid rgba(255, 255, 255, 0.1)',
-  marginTop: '1rem',
+const featureStyles: React.CSSProperties = {
+  textAlign: 'center',
 };
 
-const debugTitleStyles: React.CSSProperties = {
-  fontSize: '1rem',
+const featureTitleStyles: React.CSSProperties = {
+  fontSize: '1.2rem',
   fontWeight: 600,
-  marginBottom: '0.5rem',
   color: '#334155',
+  marginBottom: '1rem',
 };
 
-const debugItemStyles: React.CSSProperties = {
-  fontSize: '0.9rem',
+const featureListStyles: React.CSSProperties = {
+  listStyle: 'none',
+  padding: 0,
+  margin: 0,
+  display: 'flex',
+  flexDirection: 'column',
+  gap: '0.5rem',
+  fontSize: '0.95rem',
   color: '#64748b',
-  margin: '0.25rem 0',
-  fontFamily: 'monospace',
 };
 
 export default Login;

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { useAuthContext } from '../../contexts/AuthContext';
+import { useAuth } from '../../hooks/useAuth0';
 import { theme } from '../../styles/theme';
 import {
   DashboardIcon,
@@ -97,8 +97,8 @@ const Navigation: React.FC<NavigationProps> = ({
   const navigate = useNavigate();
   const location = useLocation();
   
-  // 🎓 学習ポイント5: useAuthContext hookを使った認証状態の取得
-  const { isAuthenticated, user, logout } = useAuthContext();
+  // 🎓 学習ポイント5: useAuth hookを使った認証状態の取得  
+  const { isAuthenticated, user, logout } = useAuth();
   const [hoveredItem, setHoveredItem] = useState<string | null>(null);
 
   // 🎓 学習ポイント6: 条件付きレンダリング用の関数
