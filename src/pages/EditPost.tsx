@@ -1,10 +1,21 @@
-import React, { useReducer } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useReducer, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import type { Post } from '../types/Post';
 import Button from '../components/common/Button';
 import Input from '../components/common/Input';
-import { useCreatePost } from '../hooks/usePostMutations';
-import { DocumentIcon, GlobeIcon, UserIcon, CalendarIcon, TagIcon, ShieldIcon, PencilIcon, SearchIcon, IconSizes } from '../components/common/Icons';
+import { usePost } from '../hooks/usePosts';
+import { useUpdatePost, usePatchPost } from '../hooks/usePostMutations';
+import { 
+  DocumentIcon, 
+  GlobeIcon, 
+  CalendarIcon, 
+  TagIcon, 
+  ShieldIcon, 
+  PencilIcon, 
+  SearchIcon, 
+  ArrowLeftIcon,
+  IconSizes 
+} from '../components/common/Icons';
 
 // 🎓 学習ポイント1: useReducer用の状態型定義
 interface FormState {
@@ -12,7 +23,6 @@ interface FormState {
   formData: {
     title: string;
     content: string;
-    excerpt: string;
     tags: string[];
     status: Post['status'];
   };
@@ -20,13 +30,13 @@ interface FormState {
   validation: {
     titleError: string | null;
     contentError: string | null;
-    excerptError: string | null;
   };
   // UI状態
   ui: {
     isSubmitting: boolean;
     showPreview: boolean;
     activeTab: 'edit' | 'preview';
+    isInitialized: boolean;
   };
 }
 
@@ -34,7 +44,6 @@ interface FormState {
 type FormAction =
   | { type: 'SET_TITLE'; payload: string }
   | { type: 'SET_CONTENT'; payload: string }
-  | { type: 'SET_EXCERPT'; payload: string }
   | { type: 'SET_TAGS'; payload: string[] }
   | { type: 'SET_STATUS'; payload: Post['status'] }
   | { type: 'SET_VALIDATION_ERROR'; field: keyof FormState['validation']; error: string | null }
@@ -42,6 +51,7 @@ type FormAction =
   | { type: 'SET_SUBMITTING'; payload: boolean }
   | { type: 'TOGGLE_PREVIEW' }
   | { type: 'SET_ACTIVE_TAB'; payload: FormState['ui']['activeTab'] }
+  | { type: 'INITIALIZE_FORM'; payload: Post }
   | { type: 'RESET_FORM' };
 
 // 🎓 学習ポイント3: 初期状態の定義
@@ -49,19 +59,18 @@ const initialState: FormState = {
   formData: {
     title: '',
     content: '',
-    excerpt: '',
     tags: [],
     status: 'draft',
   },
   validation: {
     titleError: null,
     contentError: null,
-    excerptError: null,
   },
   ui: {
     isSubmitting: false,
     showPreview: false,
     activeTab: 'edit',
+    isInitialized: false,
   },
 };
 
@@ -82,13 +91,6 @@ const formReducer = (state: FormState, action: FormAction): FormState => {
         ...state,
         formData: { ...state.formData, content: action.payload },
         validation: { ...state.validation, contentError: null },
-      };
-    
-    case 'SET_EXCERPT':
-      return {
-        ...state,
-        formData: { ...state.formData, excerpt: action.payload },
-        validation: { ...state.validation, excerptError: null },
       };
     
     case 'SET_TAGS':
@@ -119,7 +121,6 @@ const formReducer = (state: FormState, action: FormAction): FormState => {
         validation: {
           titleError: null,
           contentError: null,
-          excerptError: null,
         },
       };
     
@@ -150,8 +151,20 @@ const formReducer = (state: FormState, action: FormAction): FormState => {
         },
       };
     
+    case 'INITIALIZE_FORM':
+      return {
+        ...state,
+        formData: {
+          title: action.payload.title,
+          content: action.payload.content,
+          tags: action.payload.tags,
+          status: action.payload.status,
+        },
+        ui: { ...state.ui, isInitialized: true },
+      };
+    
     case 'RESET_FORM':
-      return initialState;
+      return { ...initialState, ui: { ...initialState.ui, isInitialized: state.ui.isInitialized } };
     
     default:
       return state;
@@ -159,16 +172,33 @@ const formReducer = (state: FormState, action: FormAction): FormState => {
 };
 
 // 🎓 学習ポイント5: メインコンポーネント
-const CreatePost: React.FC = () => {
+const EditPost: React.FC = () => {
+  const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   
-  // 🔑 重要: TanStack Query mutation hook
-  const createPost = useCreatePost();
+  // 🔑 重要: TanStack Query を使った既存データの取得
+  const { 
+    data: post, 
+    isLoading, 
+    isError, 
+    error 
+  } = usePost(id);
+  
+  // 🔑 重要: 投稿更新用のmutation hook
+  const updatePost = useUpdatePost();
+  const patchPost = usePatchPost();
   
   // 🎯 useReducer の使用
   const [state, dispatch] = useReducer(formReducer, initialState);
 
-  // 🎓 学習ポイント6: バリデーション関数
+  // 🎓 学習ポイント6: 既存データでフォームを初期化
+  useEffect(() => {
+    if (post && !state.ui.isInitialized) {
+      dispatch({ type: 'INITIALIZE_FORM', payload: post });
+    }
+  }, [post, state.ui.isInitialized]);
+
+  // 🎓 学習ポイント7: バリデーション関数
   const validateForm = (): boolean => {
     let isValid = true;
 
@@ -193,7 +223,7 @@ const CreatePost: React.FC = () => {
     return isValid;
   };
 
-  // 🎓 学習ポイント7: タグ処理関数
+  // 🎓 学習ポイント8: タグ処理関数
   const handleTagsChange = (tagsString: string) => {
     const tags = tagsString
       .split(',')
@@ -202,8 +232,10 @@ const CreatePost: React.FC = () => {
     dispatch({ type: 'SET_TAGS', payload: tags });
   };
 
-  // 🎓 学習ポイント8: フォーム送信処理（実際のAPI呼び出し）
+  // 🎓 学習ポイント9: フォーム送信処理（実際のAPI呼び出し）
   const handleSubmit = async () => {
+    if (!id) return;
+    
     dispatch({ type: 'CLEAR_VALIDATION_ERRORS' });
     
     if (!validateForm()) {
@@ -213,49 +245,110 @@ const CreatePost: React.FC = () => {
     dispatch({ type: 'SET_SUBMITTING', payload: true });
     
     // 🔑 重要: TanStack Query mutation を使用した実際のAPI呼び出し
-    createPost.mutate(
+    updatePost.mutate(
       {
-        title: state.formData.title,
-        content: state.formData.content,
-        tags: state.formData.tags,
-        status: state.formData.status as 'draft' | 'published',
+        id,
+        data: {
+          title: state.formData.title,
+          content: state.formData.content,
+          tags: state.formData.tags,
+        }
       },
       {
         // 成功時の処理
-        onSuccess: (newPost) => {
-          console.log('✅ 投稿が正常に作成されました:', newPost);
-          dispatch({ type: 'SET_SUBMITTING', payload: false });
-          dispatch({ type: 'RESET_FORM' });
+        onSuccess: (updatedPost) => {
+          console.log('✅ 投稿が正常に更新されました:', updatedPost);
           
-          // 投稿詳細ページまたは投稿一覧ページに遷移
-          if (newPost.id) {
-            navigate(`/posts/${newPost.id}`);
-          } else {
-            navigate('/posts');
+          // ステータスが変更された場合は部分更新も実行
+          if (state.formData.status !== post?.status) {
+            patchPost.mutate({
+              id,
+              data: { status: state.formData.status }
+            }, {
+              onSuccess: () => {
+                console.log('✅ ステータスが正常に更新されました:', state.formData.status);
+              },
+              onError: (statusError: any) => {
+                console.error('❌ ステータス更新でエラーが発生しました:', statusError);
+                alert(`ステータス更新エラー: ${statusError.message}`);
+              }
+            });
           }
+          
+          dispatch({ type: 'SET_SUBMITTING', payload: false });
+          navigate(`/posts/${id}`);
         },
         
         // エラー時の処理
         onError: (error: any) => {
-          console.error('❌ 投稿作成でエラーが発生しました:', error);
+          console.error('❌ 投稿更新でエラーが発生しました:', error);
           dispatch({ type: 'SET_SUBMITTING', payload: false });
           
           // エラーメッセージを表示
-          const errorMessage = error.message || '投稿の作成に失敗しました';
+          const errorMessage = error.message || '投稿の更新に失敗しました';
           alert(`エラー: ${errorMessage}`);
         }
       }
     );
   };
 
+  // ローディング状態
+  if (isLoading) {
+    return (
+      <div style={loadingStyles}>
+        <DocumentIcon size={IconSizes.xl} />
+        <p>投稿を読み込み中...</p>
+      </div>
+    );
+  }
+
+  // エラー状態
+  if (isError) {
+    return (
+      <div style={errorStyles}>
+        <ShieldIcon size={IconSizes.xl} />
+        <h2>エラーが発生しました</h2>
+        <p>{error?.message || '投稿の読み込みに失敗しました'}</p>
+        <Button variant="primary" onClick={() => navigate('/posts')}>
+          投稿一覧に戻る
+        </Button>
+      </div>
+    );
+  }
+
+  // 投稿が見つからない場合
+  if (!post) {
+    return (
+      <div style={errorStyles}>
+        <DocumentIcon size={IconSizes.xl} />
+        <h2>投稿が見つかりません</h2>
+        <p>指定された投稿は存在しないか、削除された可能性があります。</p>
+        <Button variant="primary" onClick={() => navigate('/posts')}>
+          投稿一覧に戻る
+        </Button>
+      </div>
+    );
+  }
+
   return (
     <div style={containerStyles}>
       <div style={headerStyles}>
-        <h1 style={titleStyles}>新規投稿作成</h1>
-        <p style={subtitleStyles}>記事を作成して公開しましょう</p>
+        <div style={headerContentStyles}>
+          <Button 
+            variant="secondary" 
+            onClick={() => navigate(`/posts/${id}`)}
+          >
+            <ArrowLeftIcon size={IconSizes.sm} />
+            戻る
+          </Button>
+          <div>
+            <h1 style={titleStyles}>投稿を編集</h1>
+            <p style={subtitleStyles}>「{post.title}」を編集しています</p>
+          </div>
+        </div>
       </div>
 
-      {/* 🎓 学習ポイント9: タブ切り替え */}
+      {/* 🎓 学習ポイント10: タブ切り替え */}
       <div style={tabsStyles}>
         <button
           style={{
@@ -292,17 +385,6 @@ const CreatePost: React.FC = () => {
               required
             />
 
-            {/* 抜粋 */}
-            <Input
-              label="抜粋"
-              placeholder="投稿の概要を入力..."
-              value={state.formData.excerpt}
-              onChange={(value) => dispatch({ type: 'SET_EXCERPT', payload: value })}
-              error={state.validation.excerptError || undefined}
-              helperText="記事の概要を簡潔に記述してください（オプション）"
-              fullWidth
-            />
-
             {/* 内容 */}
             <div style={fieldStyles}>
               <label style={labelStyles}>
@@ -316,7 +398,7 @@ const CreatePost: React.FC = () => {
                 placeholder="投稿の内容を入力..."
                 value={state.formData.content}
                 onChange={(e) => dispatch({ type: 'SET_CONTENT', payload: e.target.value })}
-                rows={10}
+                rows={15}
               />
               {state.validation.contentError && (
                 <div style={errorTextStyles}>
@@ -339,7 +421,7 @@ const CreatePost: React.FC = () => {
             <div style={fieldStyles}>
               <label style={labelStyles}>公開状態</label>
               <div style={radioGroupStyles}>
-                {(['draft', 'published'] as const).map(status => (
+                {(['draft', 'published', 'private'] as const).map(status => (
                   <label key={status} style={radioLabelStyles}>
                     <input
                       type="radio"
@@ -352,17 +434,31 @@ const CreatePost: React.FC = () => {
                       })}
                       style={radioInputStyles}
                     />
-                    {status === 'draft' ? <><DocumentIcon size={IconSizes.sm} /> 下書き</> : <><GlobeIcon size={IconSizes.sm} /> 公開</>}
+                    {status === 'draft' && <><DocumentIcon size={IconSizes.sm} /> 下書き</>}
+                    {status === 'published' && <><GlobeIcon size={IconSizes.sm} /> 公開</>}
+                    {status === 'private' && <><ShieldIcon size={IconSizes.sm} /> 非公開</>}
                   </label>
                 ))}
               </div>
             </div>
 
+            {/* 投稿情報 */}
+            <div style={postInfoStyles}>
+              <div style={postInfoItemStyles}>
+                <CalendarIcon size={IconSizes.sm} />
+                <span>公開日: {post.first_published_at ? new Date(post.first_published_at).toLocaleDateString('ja-JP') : '未公開'}</span>
+              </div>
+              <div style={postInfoItemStyles}>
+                <CalendarIcon size={IconSizes.sm} />
+                <span>更新日: {post.content_updated_at ? new Date(post.content_updated_at).toLocaleDateString('ja-JP') : '未更新'}</span>
+              </div>
+            </div>
+
             {/* エラー表示 */}
-            {createPost.isError && (
+            {updatePost.isError && (
               <div style={apiErrorStyles}>
                 <ShieldIcon size={IconSizes.sm} />
-                <span>作成エラー: {createPost.error?.message || '不明なエラーが発生しました'}</span>
+                <span>更新エラー: {updatePost.error?.message || '不明なエラーが発生しました'}</span>
               </div>
             )}
 
@@ -370,18 +466,18 @@ const CreatePost: React.FC = () => {
             <div style={actionsStyles}>
               <Button
                 variant="secondary"
-                onClick={() => dispatch({ type: 'RESET_FORM' })}
-                disabled={state.ui.isSubmitting || createPost.isPending}
+                onClick={() => navigate(`/posts/${id}`)}
+                disabled={state.ui.isSubmitting || updatePost.isPending}
               >
-                リセット
+                キャンセル
               </Button>
               <Button
                 variant="primary"
                 onClick={handleSubmit}
-                loading={state.ui.isSubmitting || createPost.isPending}
-                disabled={createPost.isPending}
+                loading={state.ui.isSubmitting || updatePost.isPending}
+                disabled={updatePost.isPending}
               >
-                {state.formData.status === 'published' ? '投稿を公開' : '下書き保存'}
+                更新を保存
               </Button>
             </div>
           </div>
@@ -393,17 +489,10 @@ const CreatePost: React.FC = () => {
                 {state.formData.title || 'タイトル未入力'}
               </h1>
               <div style={previewMetaStyles}>
-                <span><UserIcon size={IconSizes.sm} /> 開発者</span>
                 <span><CalendarIcon size={IconSizes.sm} /> {new Date().toLocaleDateString('ja-JP')}</span>
                 <span><TagIcon size={IconSizes.sm} /> {state.formData.tags.length > 0 ? state.formData.tags.join(', ') : 'タグなし'}</span>
               </div>
             </div>
-            
-            {state.formData.excerpt && (
-              <div style={previewExcerptStyles}>
-                <strong>概要:</strong> {state.formData.excerpt}
-              </div>
-            )}
             
             <div style={previewContentStyles}>
               {state.formData.content || '内容が入力されていません'}
@@ -424,14 +513,19 @@ const containerStyles: React.CSSProperties = {
 
 const headerStyles: React.CSSProperties = {
   marginBottom: '2rem',
-  textAlign: 'center',
+};
+
+const headerContentStyles: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: '1rem',
 };
 
 const titleStyles: React.CSSProperties = {
   fontSize: '2.5rem',
   fontWeight: 700,
   marginBottom: '0.5rem',
-  background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+  background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
   WebkitBackgroundClip: 'text',
   WebkitTextFillColor: 'transparent',
   backgroundClip: 'text',
@@ -441,6 +535,30 @@ const subtitleStyles: React.CSSProperties = {
   fontSize: '1.1rem',
   color: '#64748b',
   margin: 0,
+};
+
+const loadingStyles: React.CSSProperties = {
+  display: 'flex',
+  flexDirection: 'column',
+  alignItems: 'center',
+  justifyContent: 'center',
+  minHeight: '400px',
+  textAlign: 'center',
+  gap: '1rem',
+};
+
+const errorStyles: React.CSSProperties = {
+  display: 'flex',
+  flexDirection: 'column',
+  alignItems: 'center',
+  justifyContent: 'center',
+  minHeight: '400px',
+  textAlign: 'center',
+  gap: '1rem',
+  backgroundColor: 'rgba(239, 68, 68, 0.1)',
+  borderRadius: '12px',
+  border: '1px solid rgba(239, 68, 68, 0.2)',
+  padding: '3rem',
 };
 
 const tabsStyles: React.CSSProperties = {
@@ -459,11 +577,14 @@ const tabButtonStyles: React.CSSProperties = {
   color: '#64748b',
   borderBottom: '2px solid transparent',
   transition: 'all 0.2s ease',
+  display: 'flex',
+  alignItems: 'center',
+  gap: '0.5rem',
 };
 
 const activeTabStyles: React.CSSProperties = {
-  color: '#10b981',
-  borderBottomColor: '#10b981',
+  color: '#f59e0b',
+  borderBottomColor: '#f59e0b',
 };
 
 const contentStyles: React.CSSProperties = {
@@ -513,6 +634,9 @@ const errorTextStyles: React.CSSProperties = {
   fontSize: '0.875rem',
   color: '#ef4444',
   fontWeight: 500,
+  display: 'flex',
+  alignItems: 'center',
+  gap: '0.25rem',
 };
 
 const radioGroupStyles: React.CSSProperties = {
@@ -532,6 +656,24 @@ const radioLabelStyles: React.CSSProperties = {
 
 const radioInputStyles: React.CSSProperties = {
   marginRight: '0.25rem',
+};
+
+const postInfoStyles: React.CSSProperties = {
+  display: 'flex',
+  flexDirection: 'column',
+  gap: '0.5rem',
+  padding: '1rem',
+  backgroundColor: 'rgba(59, 130, 246, 0.1)',
+  borderRadius: '8px',
+  border: '1px solid rgba(59, 130, 246, 0.2)',
+};
+
+const postInfoItemStyles: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: '0.5rem',
+  fontSize: '0.9rem',
+  color: '#1e40af',
 };
 
 const apiErrorStyles: React.CSSProperties = {
@@ -581,17 +723,6 @@ const previewMetaStyles: React.CSSProperties = {
   flexWrap: 'wrap',
 };
 
-const previewExcerptStyles: React.CSSProperties = {
-  padding: '1rem',
-  backgroundColor: 'rgba(16, 185, 129, 0.1)',
-  borderRadius: '8px',
-  border: '1px solid rgba(16, 185, 129, 0.2)',
-  marginBottom: '2rem',
-  fontSize: '1rem',
-  color: '#374151',
-  lineHeight: 1.6,
-};
-
 const previewContentStyles: React.CSSProperties = {
   fontSize: '1rem',
   color: '#374151',
@@ -599,4 +730,4 @@ const previewContentStyles: React.CSSProperties = {
   whiteSpace: 'pre-wrap',
 };
 
-export default CreatePost;
+export default EditPost;

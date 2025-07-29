@@ -59,16 +59,6 @@ export const usePosts = (params: ListPostsParams = {}) => {
     staleTime: 3 * 60 * 1000,     // 3分間データを新鮮とみなす
     gcTime: 5 * 60 * 1000,        // 5分後にキャッシュから削除
     
-    // 🎓 学習ポイント: プレースホルダーデータ（OpenAPI形式）
-    placeholderData: {
-      posts: [],
-      meta: {
-        total: 0,
-        limit: params.limit || 20,
-        offset: params.offset || 0,
-        has_next: false
-      }
-    },
     
     // 🎓 学習ポイント: エラー時のリトライ（QueryClientから継承）
     // 401/403エラーは再試行しない設定済み

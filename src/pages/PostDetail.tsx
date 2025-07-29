@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import type { Post } from '../types/Post';
 import Button from '../components/common/Button';
 import { useFavorites } from '../contexts/FavoritesContext';
+import { usePost } from '../hooks/usePosts';
 import { 
   HeartIcon, 
-  UserIcon, 
   CalendarIcon, 
   TagIcon, 
   ArrowLeftIcon, 
@@ -18,195 +18,28 @@ import {
   IconSizes
 } from '../components/common/Icons';
 
-// 🎓 学習ポイント1: 投稿詳細ページ（useStateパターン）
+// 🎓 学習ポイント1: 投稿詳細ページ（TanStack Query使用）
 const PostDetail: React.FC = () => {
   // 🎓 学習ポイント2: URLパラメータの取得
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
 
-  // 🎓 学習ポイント3: シンプルなuseState管理
-  const [post, setPost] = useState<Post | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
+  // 🔑 重要: TanStack Queryを使ったデータ取得
+  const { 
+    data: post, 
+    isLoading, 
+    isFetching,
+    isError, 
+    error 
+  } = usePost(id);
 
   // 🎓 学習ポイント4: お気に入りコンテキストの利用
   const { isFavorite, toggleFavorite, favoriteCount } = useFavorites();
 
-  // 🎓 学習ポイント4: ダミーデータ取得関数
-  const getDummyPosts = (): Post[] => [
-    {
-      id: 1,
-      title: "React TypeScriptの学習方法",
-      content: `# React TypeScriptの学習方法
-
-## はじめに
-React TypeScriptを効率的に学習するためのポイントを解説します。
-
-## 1. 基本概念の理解
-まずはReactの基本概念をしっかりと理解することが重要です。
-- コンポーネント
-- Props
-- State
-- ライフサイクル
-
-## 2. TypeScriptの型システム
-TypeScriptの強力な型システムを活用することで、より安全で保守しやすいコードを書くことができます。
-
-\`\`\`typescript
-interface Props {
-  title: string;
-  count: number;
-}
-
-const MyComponent: React.FC<Props> = ({ title, count }) => {
-  return <div>{title}: {count}</div>;
-};
-\`\`\`
-
-## 3. Hooksの使い方
-React Hooksを使って関数コンポーネントで状態管理を行います。
-
-## まとめ
-継続的な学習と実践が重要です。`,
-      author: "開発者",
-      createdAt: "2024-01-20T10:00:00Z",
-      updatedAt: "2024-01-21T15:30:00Z",
-      status: "published",
-      tags: ["React", "TypeScript", "学習"],
-      excerpt: "React TypeScriptを効率的に学習するためのポイント"
-    },
-    {
-      id: 2,
-      title: "useReducerとuseStateの使い分け",
-      content: `# useReducerとuseStateの使い分け
-
-## 概要
-Reactの状態管理において、useStateとuseReducerをどう使い分けるかを解説します。
-
-## useState を使う場面
-- 状態が単純（文字列、数値、boolean）
-- 状態同士が独立している
-- 更新ロジックが簡単
-
-\`\`\`typescript
-const [count, setCount] = useState(0);
-const [name, setName] = useState('');
-\`\`\`
-
-## useReducer を使う場面
-- 状態が複雑（オブジェクト、配列）
-- 複数の状態が関連している
-- 更新パターンが決まっている
-
-\`\`\`typescript
-const [state, dispatch] = useReducer(reducer, initialState);
-\`\`\`
-
-## 実例での比較
-フォーム管理を例に、両者の違いを見てみましょう。
-
-### useState版
-複数のstateを個別に管理する必要があります。
-
-### useReducer版
-関連する状態をまとめて管理できます。
-
-## まとめ
-適切な選択によって、コードの可読性と保守性が向上します。`,
-      author: "開発者",
-      createdAt: "2024-01-19T15:30:00Z",
-      updatedAt: "2024-01-19T16:00:00Z",
-      status: "published",
-      tags: ["React", "状態管理", "hooks"],
-      excerpt: "状態管理の選択基準について"
-    },
-    {
-      id: 3,
-      title: "API連携のベストプラクティス",
-      content: `# API連携のベストプラクティス
-
-## はじめに
-ReactアプリケーションでのAPI連携パターンとベストプラクティスを紹介します。
-
-## 1. エラーハンドリング
-APIエラーは適切に処理する必要があります。
-
-\`\`\`typescript
-try {
-  const response = await fetch('/api/data');
-  if (!response.ok) {
-    throw new Error('API呼び出しに失敗しました');
-  }
-  const data = await response.json();
-} catch (error) {
-  console.error('エラー:', error);
-}
-\`\`\`
-
-## 2. ローディング状態の管理
-ユーザー体験向上のため、ローディング状態を適切に管理します。
-
-## 3. キャッシュ戦略
-同じデータの重複取得を避けるため、適切なキャッシュ戦略を立てます。
-
-## 4. React Query の活用
-本格的なアプリケーションではReact Queryの使用を検討します。
-
-## まとめ
-適切なAPI連携により、高品質なアプリケーションを構築できます。`,
-      author: "開発者",
-      createdAt: "2024-01-18T09:15:00Z",
-      updatedAt: "2024-01-18T10:00:00Z",
-      status: "draft",
-      tags: ["API", "React", "ベストプラクティス"],
-      excerpt: "API連携のパターンとエラーハンドリング"
-    }
-  ];
-
-  // 🎓 学習ポイント5: API呼び出し（ダミーデータ版）
-  const fetchPost = async (postId: number) => {
-    setLoading(true);
-    setError(null);
-
-    try {
-      // 実際のAPI呼び出しをシミュレート
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
-      const dummyPosts = getDummyPosts();
-      const foundPost = dummyPosts.find(p => p.id === postId);
-
-      if (!foundPost) {
-        throw new Error('投稿が見つかりませんでした');
-      }
-
-      setPost(foundPost);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : '予期しないエラーが発生しました');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // 🎓 学習ポイント6: useEffect でデータ取得
-  useEffect(() => {
-    if (!id) {
-      setError('投稿IDが指定されていません');
-      setLoading(false);
-      return;
-    }
-
-    const postId = parseInt(id, 10);
-    if (isNaN(postId)) {
-      setError('無効な投稿IDです');
-      setLoading(false);
-      return;
-    }
-
-    fetchPost(postId);
-  }, [id]);
 
   // 🎓 学習ポイント7: 日付フォーマット関数
-  const formatDate = (dateString: string) => {
+  const formatDate = (dateString: string | null) => {
+    if (!dateString) return '未設定';
     const date = new Date(dateString);
     return new Intl.DateTimeFormat('ja-JP', {
       year: 'numeric',
@@ -232,10 +65,16 @@ try {
         bgColor: 'rgba(245, 158, 11, 0.1)',
         icon: <DocumentIcon size={IconSizes.sm} />
       },
-      archived: { 
-        text: 'アーカイブ', 
-        color: IconColors.muted, 
+      private: { 
+        text: '非公開', 
+        color: IconColors.secondary, 
         bgColor: 'rgba(107, 114, 128, 0.1)',
+        icon: <ArchiveIcon size={IconSizes.sm} />
+      },
+      deleted: { 
+        text: '削除済み', 
+        color: IconColors.danger, 
+        bgColor: 'rgba(239, 68, 68, 0.1)',
         icon: <ArchiveIcon size={IconSizes.sm} />
       }
     };
@@ -254,9 +93,9 @@ try {
     );
   };
 
-  // 🎓 学習ポイント9: 条件付きレンダリング
+  // 🎓 学習ポイント5: 条件付きレンダリング（TanStack Query使用）
   const renderContent = () => {
-    if (loading) {
+    if (isLoading || isFetching) {
       return (
         <div style={loadingStyles}>
           <div style={loadingSpinnerStyles}>⏳</div>
@@ -265,12 +104,12 @@ try {
       );
     }
 
-    if (error) {
+    if (isError) {
       return (
         <div style={errorStyles}>
           <div style={errorIconStyles}><ShieldIcon size={IconSizes.lg} /></div>
           <h2>エラーが発生しました</h2>
-          <p>{error}</p>
+          <p>{error?.message || '予期しないエラーが発生しました'}</p>
           <div style={errorActionsStyles}>
             <Button variant="secondary" onClick={() => navigate('/posts')}>
               投稿一覧に戻る
@@ -306,24 +145,14 @@ try {
           </div>
           
           <div style={metaStyles}>
-            <div style={authorStyles}>
-              <UserIcon size={IconSizes.sm} color={IconColors.secondary} />
-              <span>{post.author}</span>
-            </div>
             <div style={dateStyles}>
               <CalendarIcon size={IconSizes.sm} color={IconColors.secondary} />
-              <span>作成: {formatDate(post.createdAt)}</span>
-              {post.updatedAt !== post.createdAt && (
-                <span>（更新: {formatDate(post.updatedAt)}）</span>
+              <span>公開: {formatDate(post.first_published_at || '未設定')}</span>
+              {post.content_updated_at && (
+                <span>（更新: {formatDate(post.content_updated_at)}）</span>
               )}
             </div>
           </div>
-
-          {post.excerpt && (
-            <div style={excerptStyles}>
-              <strong>概要: </strong>{post.excerpt}
-            </div>
-          )}
 
           <div style={tagsStyles}>
             {post.tags.map(tag => (
@@ -504,31 +333,12 @@ const metaStyles: React.CSSProperties = {
   marginBottom: '1.5rem',
 };
 
-const authorStyles: React.CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  gap: '0.5rem',
-  fontSize: '1rem',
-  color: '#64748b',
-};
-
 const dateStyles: React.CSSProperties = {
   display: 'flex',
   alignItems: 'center',
   gap: '0.5rem',
   fontSize: '0.9rem',
   color: '#64748b',
-};
-
-const excerptStyles: React.CSSProperties = {
-  padding: '1rem',
-  backgroundColor: 'rgba(14, 165, 233, 0.1)',
-  borderRadius: '8px',
-  border: '1px solid rgba(14, 165, 233, 0.2)',
-  marginBottom: '1.5rem',
-  fontSize: '1rem',
-  color: '#374151',
-  lineHeight: 1.6,
 };
 
 const tagsStyles: React.CSSProperties = {

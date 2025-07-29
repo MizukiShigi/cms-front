@@ -10,6 +10,7 @@ import ProtectedRoute from './components/auth/ProtectedRoute'
 import Dashboard from './pages/Dashboard'
 import Posts from './pages/Posts'
 import CreatePost from './pages/CreatePost'
+import EditPost from './pages/EditPost'
 import PostDetail from './pages/PostDetail'
 import Media from './pages/Media'
 import Settings from './pages/Settings'
@@ -66,6 +67,14 @@ function App() {
               element={
                 <ProtectedRoute>
                   <CreatePost />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/posts/:id/edit" 
+              element={
+                <ProtectedRoute>
+                  <EditPost />
                 </ProtectedRoute>
               } 
             />
