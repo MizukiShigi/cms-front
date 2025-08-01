@@ -13,13 +13,13 @@ export const useAuth = () => {
     error,
   } = useAuth0Original();
 
-  // 既存のAuthContextインターフェースに合わせる
-  const login = async (email?: string, password?: string) => {
+  const login = async () => {
     // Auth0のUniversal Loginを使用（email/passwordは使用しない）
     await loginWithRedirect();
   };
 
-  const register = async (name?: string, email?: string, password?: string) => {
+
+  const register = async () => {
     // Auth0のUniversal Loginで登録画面を表示
     await loginWithRedirect({
       authorizationParams: {
@@ -31,7 +31,7 @@ export const useAuth = () => {
   const logout = () => {
     auth0Logout({
       logoutParams: {
-        returnTo: window.location.origin,
+        returnTo: window.location.origin + '/login',
       },
     });
   };
