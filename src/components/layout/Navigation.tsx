@@ -132,7 +132,6 @@ const Navigation: React.FC<NavigationProps> = ({
   // 🎓 学習ポイント9: ログアウト処理
   const handleLogout = () => {
     logout();
-    navigate('/'); // React Routerで実際のページ遷移
     onClose();
   };
 
