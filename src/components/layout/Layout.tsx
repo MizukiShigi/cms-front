@@ -24,7 +24,7 @@ const Layout: React.FC<LayoutProps> = ({
   isDarkMode = false,
   onThemeToggle,
 }) => {
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading] = useState(false);
 
   return (
     <div style={getLayoutStyles(isDarkMode)}>

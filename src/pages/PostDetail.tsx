@@ -155,7 +155,7 @@ const PostDetail: React.FC = () => {
           </div>
 
           <div style={tagsStyles}>
-            {post.tags.map(tag => (
+            {post.tags.map((tag: string) => (
               <span key={tag} style={tagStyles}>
                 <TagIcon size={IconSizes.xs} style={{ marginRight: '0.25rem' }} />
                 {tag}
@@ -167,7 +167,7 @@ const PostDetail: React.FC = () => {
         {/* コンテンツ部分 */}
         <main style={contentStyles}>
           <div style={markdownStyles}>
-            {post.content.split('\n').map((line, index) => {
+            {post.content.split('\n').map((line: string, index: number) => {
               // 簡易Markdown風レンダリング
               if (line.startsWith('# ')) {
                 return <h1 key={index} style={h1Styles}>{line.slice(2)}</h1>;

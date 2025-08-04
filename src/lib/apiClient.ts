@@ -15,24 +15,15 @@ export const apiClient = axios.create({
   timeout: 30000,
 });
 
-// 🎓 学習ポイント2: リクエストインターセプター（JWT認証対応）
+// 🎓 学習ポイント2: シンプルなリクエストインターセプター（ログ用）
 apiClient.interceptors.request.use(
   (config) => {
-    // LocalStorageからJWTトークンを取得
-    const token = localStorage.getItem('auth_token');
-
-    if (token) {
-      // 🔑 重要: Bearer認証ヘッダーの設定
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-
     // 🎓 デバッグ用: 開発中はリクエスト内容をログ出力
     if (process.env.NODE_ENV === 'development') {
       console.log('API Request:', {
         method: config.method?.toUpperCase(),
         url: config.url,
         data: config.data,
-        headers: config.headers,
       });
     }
 
@@ -63,9 +54,9 @@ apiClient.interceptors.response.use(
       // サーバーからエラーレスポンスが返された場合
       const { status, data } = error.response;
 
-      // 401エラー（認証失敗）の場合、トークンを削除してログイン画面へ
+      // 401エラー（認証失敗）の場合の処理
       if (status === 401) {
-        localStorage.removeItem('auth_token');
+        console.warn('Authentication failed. Please log in again.');
         // 必要に応じてログイン画面にリダイレクト
         // window.location.href = '/login';
       }
@@ -110,48 +101,137 @@ export const authApi = {
     apiClient.post('/auth/login', data),
 };
 
-// 投稿API
+// 🎓 学習ポイント: 手動トークン付きAPI関数
 export const postsApi = {
-  // 投稿一覧取得
-  list: (params: {
+  // 投稿一覧取得（手動トークン）
+  list: async (getToken: () => Promise<string | null>, params: {
     limit?: number;
     offset?: number;
     status?: 'draft' | 'published' | 'private' | 'deleted';
     sort?: 'created_at_desc' | 'created_at_asc' | 'updated_at_desc' | 'updated_at_asc';
-  } = {}) => apiClient.get('/posts', { params }),
+  } = {}) => {
+    const token = await getToken();
+    return fetch(`${API_BASE_URL}/posts?${new URLSearchParams(params as any)}`, {
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token && { Authorization: `Bearer ${token}` }),
+      },
+    });
+  },
 
-  // 投稿詳細取得
-  get: (id: string) => apiClient.get(`/posts/${id}`),
+  // 投稿詳細取得（手動トークン）
+  get: async (getToken: () => Promise<string | null>, id: string) => {
+    const token = await getToken();
+    return fetch(`${API_BASE_URL}/posts/${id}`, {
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token && { Authorization: `Bearer ${token}` }),
+      },
+    });
+  },
 
-  // 投稿作成
-  create: (data: {
+  // 投稿作成（手動トークン）
+  create: async (getToken: () => Promise<string | null>, data: {
     title: string;
     content: string;
     tags?: string[];
     status: 'draft' | 'published';
-  }) => apiClient.post('/posts', data),
+  }) => {
+    const token = await getToken();
+    return fetch(`${API_BASE_URL}/posts`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token && { Authorization: `Bearer ${token}` }),
+      },
+      body: JSON.stringify(data),
+    });
+  },
 
-  // 投稿更新（完全更新）
-  update: (id: string, data: {
+  // 投稿更新（手動トークン）
+  update: async (getToken: () => Promise<string | null>, id: string, data: {
     title: string;
     content: string;
     tags?: string[];
-  }) => apiClient.put(`/posts/${id}`, data),
+  }) => {
+    const token = await getToken();
+    return fetch(`${API_BASE_URL}/posts/${id}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token && { Authorization: `Bearer ${token}` }),
+      },
+      body: JSON.stringify(data),
+    });
+  },
 
-  // 投稿部分更新
-  patch: (id: string, data: {
+  // 投稿部分更新（手動トークン）
+  patch: async (getToken: () => Promise<string | null>, id: string, data: {
     title?: string;
     content?: string;
     tags?: string[];
     status?: 'draft' | 'published' | 'private' | 'deleted';
-  }) => apiClient.patch(`/posts/${id}`, data),
+  }) => {
+    const token = await getToken();
+    return fetch(`${API_BASE_URL}/posts/${id}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token && { Authorization: `Bearer ${token}` }),
+      },
+      body: JSON.stringify(data),
+    });
+  },
 };
-
-// 🎓 まとめ: APIクライアントの利点
+// 🎓 使用例: 手動トークン方式
 /*
-1. 統一されたエラーハンドリング
-2. JWT認証の自動化
-3. 開発時のデバッグ機能
-4. 型安全なAPI呼び出し
-5. TanStack Queryとの完璧な連携
+// コンポーネント内での使用例
+import { useAuth } from '../hooks/useAuth0';
+import { postsApi } from '../lib/apiClient';
+
+function Posts() {
+  const { getToken, isAuthenticated } = useAuth();
+  
+  const fetchPosts = async () => {
+    if (!isAuthenticated) {
+      throw new Error('Not authenticated');
+    }
+    
+    try {
+      const response = await postsApi.list(getToken, { limit: 10 });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error('投稿取得エラー:', error);
+      throw error;
+    }
+  };
+  
+  const createPost = async (postData) => {
+    if (!isAuthenticated) {
+      throw new Error('Not authenticated');
+    }
+    
+    try {
+      const response = await postsApi.create(getToken, postData);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error('投稿作成エラー:', error);
+      throw error;
+    }
+  };
+}
 */
+
+

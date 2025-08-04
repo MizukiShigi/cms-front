@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import type { PostSummary, ListPostsParams } from '../types/Post';
+import type { PostSummary } from '../types/Post';
 import { usePostsPaginated } from '../hooks/usePosts';
 import Button from '../components/common/Button';
 import Input from '../components/common/Input';
@@ -28,7 +28,7 @@ const Posts: React.FC = () => {
   // 🎓 学習ポイント3: ローカル状態管理（UI状態のみ）
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [currentPage, setCurrentPage] = useState<number>(1);
-  const [statusFilter, setStatusFilter] = useState<ListPostsParams['status']>();
+  // const [statusFilter, setStatusFilter] = useState<ListPostsParams['status']>();
 
   // 🎓 学習ポイント4: お気に入りコンテキストの利用
   const { favoriteCount } = useFavorites();

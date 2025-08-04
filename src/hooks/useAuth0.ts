@@ -11,13 +11,13 @@ export const useAuth = () => {
     loginWithRedirect,
     logout: auth0Logout,
     error,
+    getAccessTokenSilently,
   } = useAuth0Original();
 
   const login = async () => {
     // Auth0のUniversal Loginを使用（email/passwordは使用しない）
     await loginWithRedirect();
   };
-
 
   const register = async () => {
     // Auth0のUniversal Loginで登録画面を表示
@@ -40,6 +40,19 @@ export const useAuth = () => {
     // Auth0のエラーは自動的に管理されるため、実装不要
   };
 
+  // Auth0トークンを取得（APIクライアントで使用）
+  const getToken = async (): Promise<string | null> => {
+    try {
+      if (!isAuthenticated) {
+        return null;
+      }
+      return await getAccessTokenSilently();
+    } catch (error) {
+      console.error('Failed to get access token:', error);
+      return null;
+    }
+  };
+
   return {
     isAuthenticated,
     user: user ? {
@@ -53,6 +66,7 @@ export const useAuth = () => {
     register,
     logout,
     clearError,
+    getToken, // 追加: APIクライアント用のトークン取得関数
   };
 };
 

@@ -2,7 +2,8 @@
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { postsApi } from '@/lib/apiClient';
-import { getPostsQueryKey, getPostQueryKey } from './usePosts';
+import { getPostQueryKey } from './usePosts';
+import { useAuth } from './useAuth0';
 import type { 
   CreatePostRequest, 
   CreatePostResponse, 
@@ -15,12 +16,22 @@ import type {
 // 🎓 学習ポイント1: 投稿作成ミューテーション
 export const useCreatePost = () => {
   const queryClient = useQueryClient();
+  const { getToken, isAuthenticated } = useAuth();
   
   return useMutation({
     // 🔑 重要: ミューテーション関数（データ更新処理）
     mutationFn: async (data: CreatePostRequest): Promise<CreatePostResponse> => {
-      const response = await postsApi.create(data);
-      return response.data;
+      if (!isAuthenticated) {
+        throw new Error('Not authenticated');
+      }
+      
+      const response = await postsApi.create(getToken, data);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      return await response.json();
     },
     
     // 🎓 学習ポイント: 成功時の処理（キャッシュ更新）
@@ -29,26 +40,6 @@ export const useCreatePost = () => {
       queryClient.invalidateQueries({
         queryKey: ['posts', 'list']
       });
-      
-      // 🎓 学習ポイント: 楽観的更新（オプション）
-      // 新しい投稿を一覧キャッシュに直接追加することも可能
-      /*
-      queryClient.setQueriesData<ListPostsResponse>(
-        { queryKey: ['posts', 'list'] },
-        (oldData) => {
-          if (!oldData) return oldData;
-          
-          return {
-            ...oldData,
-            posts: [newPost, ...oldData.posts],
-            meta: {
-              ...oldData.meta,
-              total: oldData.meta.total + 1
-            }
-          };
-        }
-      );
-      */
       
       console.log('✅ 投稿が正常に作成されました:', newPost.title);
     },
@@ -59,16 +50,26 @@ export const useCreatePost = () => {
       // 必要に応じてトースト通知やエラー表示を実装
     }
   });
-};
+};;
 
 // 🎓 学習ポイント2: 投稿更新ミューテーション（完全更新）
 export const useUpdatePost = () => {
   const queryClient = useQueryClient();
+  const { getToken, isAuthenticated } = useAuth();
   
   return useMutation({
     mutationFn: async ({ id, data }: { id: string; data: UpdatePostRequest }): Promise<Post> => {
-      const response = await postsApi.update(id, data);
-      return response.data;
+      if (!isAuthenticated) {
+        throw new Error('Not authenticated');
+      }
+      
+      const response = await postsApi.update(getToken, id, data);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      return await response.json();
     },
     
     onSuccess: (updatedPost) => {
@@ -97,11 +98,21 @@ export const useUpdatePost = () => {
 // 🎓 学習ポイント3: 投稿部分更新ミューテーション（PATCH）
 export const usePatchPost = () => {
   const queryClient = useQueryClient();
+  const { getToken, isAuthenticated } = useAuth();
   
   return useMutation({
     mutationFn: async ({ id, data }: { id: string; data: PatchPostRequest }): Promise<Post> => {
-      const response = await postsApi.patch(id, data);
-      return response.data;
+      if (!isAuthenticated) {
+        throw new Error('Not authenticated');
+      }
+      
+      const response = await postsApi.patch(getToken, id, data);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      return await response.json();
     },
     
     onSuccess: (updatedPost) => {
@@ -143,11 +154,21 @@ export const useTogglePostStatus = () => {
 // 🎓 学習ポイント5: 楽観的更新の例（高度なテクニック）
 export const useCreatePostWithOptimisticUpdate = () => {
   const queryClient = useQueryClient();
+  const { getToken, isAuthenticated } = useAuth();
   
   return useMutation({
     mutationFn: async (data: CreatePostRequest): Promise<CreatePostResponse> => {
-      const response = await postsApi.create(data);
-      return response.data;
+      if (!isAuthenticated) {
+        throw new Error('Not authenticated');
+      }
+      
+      const response = await postsApi.create(getToken, data);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      return await response.json();
     },
     
     // 🔑 重要: ミューテーション実行前の楽観的更新
@@ -193,7 +214,7 @@ export const useCreatePostWithOptimisticUpdate = () => {
       return { previousData };
     },
     
-    onError: (error, variables, context) => {
+    onError: (error, _variables, context) => {
       // エラー時は元のデータに戻す
       if (context?.previousData) {
         context.previousData.forEach(([queryKey, data]) => {

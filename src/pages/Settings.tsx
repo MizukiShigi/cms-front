@@ -1,5 +1,4 @@
 import React from 'react';
-import { theme } from '../styles/theme';
 import { SettingsIcon, IconSizes } from '../components/common/Icons';
 
 // 🎓 学習ポイント: 設定ページコンポーネント

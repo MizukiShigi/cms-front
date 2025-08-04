@@ -1,5 +1,4 @@
 import React from 'react';
-import { theme } from '../styles/theme';
 import { UserIcon, IconSizes } from '../components/common/Icons';
 
 // 🎓 学習ポイント: 新規登録ページコンポーネント

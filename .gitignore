@@ -2,3 +2,5 @@ openapi.yaml
 .history
 node_modules
 .env*
+.claude
+.serena

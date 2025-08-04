@@ -1,6 +1,5 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { theme } from '../styles/theme';
 import Button from '../components/common/Button';
 import {
   HomeIcon,

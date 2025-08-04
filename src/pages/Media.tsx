@@ -1,5 +1,4 @@
 import React from 'react';
-import { theme } from '../styles/theme';
 import { ImageIcon, IconSizes } from '../components/common/Icons';
 
 // 🎓 学習ポイント: 画像管理ページコンポーネント
